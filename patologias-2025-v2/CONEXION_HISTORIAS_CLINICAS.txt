@@ -1,0 +1,12 @@
+Integración agregada con Historias Clínicas Proinsalud.
+
+Servidor configurado:
+http://127.0.0.1:8765
+
+Campos recibidos automáticamente:
+- tipoDocumento
+- documento
+- nombres
+
+Ejemplo:
+http://localhost:5173/?tipoDocumento=CC&documento=123456&nombres=JUAN%20PEREZ

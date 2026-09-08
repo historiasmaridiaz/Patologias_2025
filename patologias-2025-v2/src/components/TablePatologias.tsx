@@ -4,6 +4,8 @@ import {
   useMaterialReactTable,
   MRT_Localization,
 } from "material-react-table";
+import fondoFormulario from '../assets/imagen.jpeg';
+
 import {
   Button,
   Dialog,
@@ -31,6 +33,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { HISTORIAS_CLINICAS_SERVER } from '../config/historiasClinicas';
 
 // Localización completa en español para Material React Table
 const MRT_Localization_ES: Partial<MRT_Localization> = {
@@ -124,7 +127,7 @@ const MRT_Localization_ES: Partial<MRT_Localization> = {
   unpinAll: 'Desanclar todo',
 };
 
-// Interfaz para los datos de Patologias_2025
+// Interfaz para los datos de Patologias_2026
 interface IPatologias {
   id: string;
   fecha: string;
@@ -154,6 +157,30 @@ function TablePatologias() {
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [parentesco, setParentesco] = useState('');
   const [observaciones, setObservaciones] = useState('');
+
+  // Recepción automática desde Historias Clínicas Proinsalud
+  // Ejemplo:
+  // http://localhost:5173/?tipoDocumento=CC&documento=123&nombres=JUAN%20PEREZ
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tipoDoc = params.get('tipoDocumento') || params.get('tipo_doc') || '';
+    const doc = params.get('documento') || params.get('cedula') || '';
+    const nombre = params.get('nombres') || params.get('nombre') || '';
+
+    if (tipoDoc || doc || nombre) {
+      setTipoDocumento(tipoDoc.toUpperCase());
+      setDocumento(doc);
+      setNombres(nombre.toUpperCase());
+      setOpen(true);
+      console.log('Datos recibidos desde Historias Clínicas:', {
+        servidor: HISTORIAS_CLINICAS_SERVER.baseUrl,
+        tipoDoc,
+        doc,
+        nombre
+      });
+    }
+  }, []);
+
 
   // Opciones para los selects
   const tipoOptions = ['VARIAS', 'GASTRICAS'];
@@ -191,6 +218,28 @@ function TablePatologias() {
   const handleNumericInput = (value: string, setter: (val: string) => void) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     setter(numericValue);
+  };
+
+  // Autocompletado manual/ENTER desde Historias Clínicas
+  const completarDesdeIntranet = async () => {
+    if (!documento) {
+      alert('Digite un número de documento.');
+      return;
+    }
+    try {
+      const url = `${HISTORIAS_CLINICAS_SERVER.baseUrl}/buscar?documento=${documento}&tipo=${tipoDocumento || 'CC'}`;
+      console.log('Consultando Historias Clínicas:', url);
+      const response = await axios.get(url);
+      const paciente = response.data?.data || response.data;
+
+      if (paciente.tipo_doc) setTipoDocumento(String(paciente.tipo_doc).toUpperCase());
+      if (paciente.cedula) setDocumento(String(paciente.cedula));
+      if (paciente.nombre) setNombres(String(paciente.nombre).toUpperCase());
+      alert('Paciente cargado correctamente');
+    } catch (error) {
+      console.error(error);
+      alert('No fue posible completar desde Intranet.');
+    }
   };
 
   // Función para abrir modal de edición
@@ -565,7 +614,7 @@ function TablePatologias() {
             },
           }}
         >
-          📊 BASE DE DATOS PATOLOGIAS 2025 V2
+          📊 BASE DE DATOS PATOLOGIAS 2026 V1
         </Typography>
         <Typography 
           variant="h6" 
@@ -587,7 +636,7 @@ function TablePatologias() {
         fullScreen={true}
         PaperProps={{
           sx: {
-            backgroundImage: 'url("https://st4.depositphotos.com/1026266/28894/i/600/depositphotos_288947058-stock-photo-medical-full-body-screening-software.jpg")',
+            backgroundImage: `url(${fondoFormulario})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -598,6 +647,7 @@ function TablePatologias() {
           }
         }}
       >
+
         <DialogTitle
           sx={{
             textAlign: 'center',
@@ -728,7 +778,21 @@ function TablePatologias() {
                   '& .MuiFormHelperText-root': { color: '#333', fontSize: isMobile ? '0.7rem' : '0.8rem' },
                 }}
                 helperText={!documento ? "Campo obligatorio - Solo números" : "Solo números"}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    completarDesdeIntranet();
+                  }
+                }}
               />
+
+              <Button
+                variant="outlined"
+                onClick={completarDesdeIntranet}
+                sx={{ mt: 1, height: 40 }}
+              >
+                🔎 Completar desde Intranet
+              </Button>
             </Box>
 
             <TextField
